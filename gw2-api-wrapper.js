@@ -3,9 +3,24 @@ function Api(options) {
 	this.key = options.key;
 	this.rootUrl = 'https://api.guildwars2.com/v2/';
 	this.cache = {};
+	this.pending = {};
+
+	this.getTokenInfo().then(tokeninfo => {
+		this.permissions = tokeninfo.permissions;
+	}, jqXhr => {
+		this.permissions = [];
+	});
 }
 
 Api.prototype = {
+	isEndpointAllowed: function (endpoint) {
+		if (!this.permissions) {
+			return true;
+		}
+		var endpointRoot = endpoint.split('/')[0];
+		return this.permissions.indexOf(endpointRoot) !== -1;
+	},
+
 	getCached: function (endpoint, key) {
 		if (key) {
 			return this.cache[endpoint] && this.cache[endpoint][key];
@@ -24,15 +39,40 @@ Api.prototype = {
 		}
 	},
 
+	getPending: function (endpoint, promise) {
+		return this.pending[endpoint];
+	},
+
+	setPending: function (endpoint, promise) {
+		if (promise === undefined) {
+			delete this.pending[endpoint];
+		} else {
+			this.pending[endpoint] = promise;
+		}
+	},
+
 	get: function (endpoint) {
 		var cached = this.getCached(endpoint);
 		if (cached) {
 			return Promise.resolve(cached);
 		}
-		return Promise.resolve().then(() => {
+
+		var pending = this.getPending(endpoint);
+		if (pending) {
+			return pending;
+		}
+
+		if (!this.isEndpointAllowed(endpoint)) {
+			return Promise.reject('Missing permissions for this endpoint');
+		}
+
+		var promise = Promise.resolve().then(() => {
 			return $.getJSON(this.rootUrl + endpoint + '?access_token=' + this.key);
-		}).then(data => {
+		});
+		this.setPending(endpoint, promise);
+		return promise.then(data => {
 			this.setCache(data, endpoint);
+			this.setPending(endpoint);
 			return data;
 		}).catch(jqXhr => {
 			if (jqXhr.status === 403) {
