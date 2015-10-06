@@ -2,8 +2,10 @@
 function Api(options) {
 	this.key = options.key;
 	this.rootUrl = 'https://api.guildwars2.com/v2/';
-	this.cache = {};
+	this.cache = JSON.parse(localStorage.getItem(this.key) || '{}');
 	this.pending = {};
+	this.saveDelay = 1000;
+	this.cacheTime = 1 * 60 * 60 * 1000;
 
 	this.getTokenInfo().then(tokeninfo => {
 		this.permissions = tokeninfo.permissions;
@@ -13,6 +15,16 @@ function Api(options) {
 }
 
 Api.prototype = {
+	save: function() {
+		if (this.timeoutId) {
+			this.timeoutId = clearTimeout(this.timeoutId);
+		}
+		this.timeoutId = setTimeout(() => {
+			delete this.timeoutId;
+			localStorage.setItem(this.key, JSON.stringify(this.cache));
+		}, this.saveDelay);
+	},
+
 	isEndpointAllowed: function (endpoint) {
 		if (!this.permissions) {
 			return true;
@@ -21,22 +33,24 @@ Api.prototype = {
 		return this.permissions.indexOf(endpointRoot) !== -1;
 	},
 
-	getCached: function (endpoint, key) {
-		if (key) {
-			return this.cache[endpoint] && this.cache[endpoint][key];
+	expire: function (endpoint) {
+		if (this.cache[endpoint]) {
+			var oldestAllowedCreationDate = Date.now() - this.cacheTime;
+			if (!this.cache[endpoint][1] || this.cache[endpoint][0] < oldestAllowedCreationDate) {
+				delete this.cache[endpoint];
+				this.save();
+			}
 		}
-		return this.cache[endpoint];
 	},
 
-	setCache: function (value, endpoint, key) {
-		if (!key) {
-			this.cache[endpoint] = value;
-		} else {
-			if (!this.cache[endpoint]) {
-				this.cache[endpoint] = {};
-			}
-			this.cache[endpoint][key] = value;
-		}
+	getCached: function (endpoint) {
+		this.expire(endpoint);
+		return this.cache[endpoint] && this.cache[endpoint][1];
+	},
+
+	setCache: function (value, endpoint) {
+		this.cache[endpoint] = [Date.now(), value];
+		this.save();
 	},
 
 	getPending: function (endpoint, promise) {
