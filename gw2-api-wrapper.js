@@ -1,3 +1,5 @@
+'use strict';
+
 /* global Promise */
 function Api(options) {
 	this.key = options.key;
@@ -5,11 +7,11 @@ function Api(options) {
 	this.cache = JSON.parse(localStorage.getItem(this.key) || '{}');
 	this.pending = {};
 	this.saveDelay = 1000;
-	this.cacheTime = 1 * 60 * 60 * 1000;
+	this.cacheTime = 60 * 60 * 1000;
 
 	this.getTokenInfo().then(tokeninfo => {
 		this.permissions = tokeninfo.permissions;
-	}, jqXhr => {
+	}, () => {
 		this.permissions = [];
 	});
 }
@@ -53,7 +55,7 @@ Api.prototype = {
 		this.save();
 	},
 
-	getPending: function (endpoint, promise) {
+	getPending: function (endpoint) {
 		return this.pending[endpoint];
 	},
 
