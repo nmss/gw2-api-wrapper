@@ -1,19 +1,25 @@
+/* global Promise, $ */
 'use strict';
 
-/* global Promise */
 function Api(options) {
+	this.keyPrefix = 'gw2-api-';
 	this.key = options.key;
 	this.rootUrl = 'https://api.guildwars2.com/v2/';
-	this.cache = JSON.parse(localStorage.getItem(this.key) || '{}');
+	this.cache = JSON.parse(localStorage.getItem(this.keyPrefix + this.key) || '{}');
 	this.pending = {};
 	this.saveDelay = 1000;
 	this.cacheTime = 60 * 60 * 1000;
 
-	this.getTokenInfo().then(tokeninfo => {
+	this.get('tokeninfo').then(tokeninfo => {
 		this.permissions = tokeninfo.permissions;
 	}, () => {
 		this.permissions = [];
 	});
+
+	setInterval(() => {
+		this.expireOthers();
+		this.expireAll();
+	}, 60 * 60 * 1000);
 }
 
 Api.prototype = {
@@ -23,7 +29,8 @@ Api.prototype = {
 		}
 		this.timeoutId = setTimeout(() => {
 			delete this.timeoutId;
-			localStorage.setItem(this.key, JSON.stringify(this.cache));
+			this.cache.lastSave = Date.now();
+			localStorage.setItem(this.keyPrefix + this.key, JSON.stringify(this.cache));
 		}, this.saveDelay);
 	},
 
@@ -37,10 +44,31 @@ Api.prototype = {
 
 	expire: function (endpoint) {
 		if (this.cache[endpoint]) {
-			var oldestAllowedCreationDate = Date.now() - this.cacheTime;
-			if (!this.cache[endpoint][1] || this.cache[endpoint][0] < oldestAllowedCreationDate) {
+			let expireDate = this.cache[endpoint][0] + this.cacheTime;
+			if (!this.cache[endpoint][1] || expireDate < Date.now()) {
 				delete this.cache[endpoint];
 				this.save();
+			}
+		}
+	},
+
+	expireAll: function () {
+		for (let endpoint in this.cache) {
+			if (endpoint === 'lastSave') {
+				continue;
+			}
+			this.expire(endpoint);
+		}
+	},
+
+	expireOthers: function() {
+		for (let key in localStorage) {
+			if (this.keyPrefix + this.key === key || key.indexOf(this.keyPrefix) !== 0) {
+				continue;
+			}
+			let data = JSON.parse(localStorage.getItem(key) || '{}');
+			if (data.lastSave + this.cacheTime < Date.now()) {
+				localStorage.removeItem(key);
 			}
 		}
 	},
