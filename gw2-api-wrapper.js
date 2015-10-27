@@ -2,19 +2,20 @@
 'use strict';
 
 function Api(options) {
-	this.keyPrefix = 'gw2-api-';
-	this.key = options.key;
-	this.rootUrl = 'https://api.guildwars2.com/v2/';
-	this.cache = JSON.parse(localStorage.getItem(this.keyPrefix + this.key) || '{}');
-	this.pending = {};
-	this.saveDelay = 1000;
-	this.cacheTime = 60 * 60 * 1000;
+	this.options = {
+		keyPrefix: 'gw2-api-',
+		rootUrl: 'https://api.guildwars2.com/v2/',
+		saveDelay: 1000,
+		cacheTimes: {
+			default: 60 * 60 * 1000
+		}
+	};
+	$.extend(true, this.options, options);
 
-	this.get('tokeninfo').then(tokeninfo => {
-		this.permissions = tokeninfo.permissions;
-	}, () => {
-		this.permissions = [];
-	});
+	this.pending = {};
+	this.cache = JSON.parse(localStorage.getItem(this.options.keyPrefix + this.options.key) || '{}');
+
+	this.initPermissions();
 
 	setInterval(() => {
 		this.expireOthers();
@@ -23,6 +24,14 @@ function Api(options) {
 }
 
 Api.prototype = {
+	initPermissions: function () {
+		this.get('tokeninfo').then(tokeninfo => {
+			this.permissions = tokeninfo.permissions;
+		}, () => {
+			this.permissions = [];
+		});
+	},
+
 	save: function() {
 		if (this.timeoutId) {
 			this.timeoutId = clearTimeout(this.timeoutId);
@@ -30,8 +39,8 @@ Api.prototype = {
 		this.timeoutId = setTimeout(() => {
 			delete this.timeoutId;
 			this.cache.lastSave = Date.now();
-			localStorage.setItem(this.keyPrefix + this.key, JSON.stringify(this.cache));
-		}, this.saveDelay);
+			localStorage.setItem(this.options.keyPrefix + this.key, JSON.stringify(this.cache));
+		}, this.options.saveDelay);
 	},
 
 	isEndpointAllowed: function (endpoint) {
@@ -42,9 +51,13 @@ Api.prototype = {
 		return this.permissions.indexOf(endpointRoot) !== -1;
 	},
 
+	getCacheTime: function (endpoint) {
+		return this.options.cacheTimes.default;
+	},
+
 	expire: function (endpoint) {
 		if (this.cache[endpoint]) {
-			let expireDate = this.cache[endpoint][0] + this.cacheTime;
+			let expireDate = this.cache[endpoint][0] + this.getCacheTime(endpoint);
 			if (!this.cache[endpoint][1] || expireDate < Date.now()) {
 				delete this.cache[endpoint];
 				this.save();
@@ -63,11 +76,11 @@ Api.prototype = {
 
 	expireOthers: function() {
 		for (let key in localStorage) {
-			if (this.keyPrefix + this.key === key || key.indexOf(this.keyPrefix) !== 0) {
+			if (this.options.keyPrefix + this.key === key || key.indexOf(this.options.keyPrefix) !== 0) {
 				continue;
 			}
 			let data = JSON.parse(localStorage.getItem(key) || '{}');
-			if (data.lastSave + this.cacheTime < Date.now()) {
+			if (data.lastSave + this.getCacheTime('global') < Date.now()) {
 				localStorage.removeItem(key);
 			}
 		}
@@ -111,7 +124,7 @@ Api.prototype = {
 		}
 
 		var promise = Promise.resolve().then(() => {
-			return $.getJSON(this.rootUrl + endpoint + '?access_token=' + this.key);
+			return $.getJSON(this.options.rootUrl + endpoint + '?access_token=' + this.key);
 		});
 		this.setPending(endpoint, promise);
 		return promise.then(data => {
