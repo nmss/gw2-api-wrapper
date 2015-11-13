@@ -39,7 +39,7 @@ Api.prototype = {
 		this.timeoutId = setTimeout(() => {
 			delete this.timeoutId;
 			this.cache.lastSave = Date.now();
-			localStorage.setItem(this.options.keyPrefix + this.key, JSON.stringify(this.cache));
+			localStorage.setItem(this.options.keyPrefix + this.options.key, JSON.stringify(this.cache));
 		}, this.options.saveDelay);
 	},
 
@@ -76,7 +76,7 @@ Api.prototype = {
 
 	expireOthers: function() {
 		for (let key in localStorage) {
-			if (this.options.keyPrefix + this.key === key || key.indexOf(this.options.keyPrefix) !== 0) {
+			if (this.options.keyPrefix + this.options.key === key || key.indexOf(this.options.keyPrefix) !== 0) {
 				continue;
 			}
 			let data = JSON.parse(localStorage.getItem(key) || '{}');
@@ -124,7 +124,7 @@ Api.prototype = {
 		}
 
 		var promise = Promise.resolve().then(() => {
-			return $.getJSON(this.options.rootUrl + endpoint + '?access_token=' + this.key);
+			return $.getJSON(this.options.rootUrl + endpoint + '?access_token=' + this.options.key);
 		});
 		this.setPending(endpoint, promise);
 		return promise.then(data => {
