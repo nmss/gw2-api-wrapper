@@ -111,16 +111,4 @@ Api.prototype = {
 			return data;
 		});
 	},
-
-	getAccount: function () { return this.get('account'); },
-	getBank: function () { return this.get('account/bank'); },
-	getDyes: function () { return this.get('account/dyes'); },
-	getMaterials: function () { return this.get('account/materials'); },
-	getSkins: function () { return this.get('account/skins'); },
-	getWallet: function () { return this.get('account/wallet'); },
-	getCharacters: function () { return this.get('characters'); },
-	getTransactions: function () { return this.get('commerce/transactions'); },
-	getPvpStats: function () { return this.get('pvp/stats'); },
-	getPvpGames: function () { return this.get('pvp/games'); },
-	getTokenInfo: function () { return this.get('tokeninfo'); },
 };
