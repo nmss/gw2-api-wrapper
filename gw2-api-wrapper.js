@@ -15,8 +15,6 @@ function Api(options) {
 	this.pending = {};
 	this.cache = JSON.parse(localStorage.getItem(this.options.keyPrefix + this.options.key) || '{}');
 
-	this.initPermissions();
-
 	setInterval(() => {
 		this.expireOthers();
 		this.expireAll();
@@ -24,14 +22,6 @@ function Api(options) {
 }
 
 Api.prototype = {
-	initPermissions: function () {
-		this.get('tokeninfo').then(tokeninfo => {
-			this.permissions = tokeninfo.permissions;
-		}, () => {
-			this.permissions = [];
-		});
-	},
-
 	save: function() {
 		if (this.timeoutId) {
 			this.timeoutId = clearTimeout(this.timeoutId);
@@ -41,14 +31,6 @@ Api.prototype = {
 			this.cache.lastSave = Date.now();
 			localStorage.setItem(this.options.keyPrefix + this.options.key, JSON.stringify(this.cache));
 		}, this.options.saveDelay);
-	},
-
-	isEndpointAllowed: function (endpoint) {
-		if (!this.permissions) {
-			return true;
-		}
-		var endpointRoot = endpoint.split('/')[0];
-		return this.permissions.indexOf(endpointRoot) !== -1;
 	},
 
 	getCacheTime: function (endpoint) {
@@ -119,10 +101,6 @@ Api.prototype = {
 			return pending;
 		}
 
-		if (!this.isEndpointAllowed(endpoint)) {
-			return Promise.reject('Missing permissions for this endpoint');
-		}
-
 		var promise = Promise.resolve().then(() => {
 			return $.getJSON(this.options.rootUrl + endpoint + '?access_token=' + this.options.key);
 		});
@@ -131,11 +109,6 @@ Api.prototype = {
 			this.setCache(data, endpoint);
 			this.setPending(endpoint);
 			return data;
-		}).catch(jqXhr => {
-			if (jqXhr.status === 403) {
-				console.error('Clé d\'API invalide');
-				throw jqXhr;
-			}
 		});
 	},
 
