@@ -34,7 +34,7 @@ Api.prototype = {
 	},
 
 	getCacheTime: function (endpoint) {
-		return this.options.cacheTimes.default;
+		return this.options.cacheTimes[endpoint] || this.options.cacheTimes.default;
 	},
 
 	expire: function (endpoint) {
