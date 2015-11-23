@@ -1,6 +1,14 @@
 /* global Promise, $ */
 'use strict';
 
+function urlify(object) {
+	var queryParams = [];
+	for (var key in object) {
+		queryParams.push(key + '=' + object[key]);
+	}
+	return '?' + queryParams.join('&');
+}
+
 function Api(options) {
 	this.options = {
 		keyPrefix: 'gw2-api-',
@@ -90,24 +98,25 @@ Api.prototype = {
 		}
 	},
 
-	get: function (endpoint) {
-		var cached = this.getCached(endpoint);
+	get: function (endpoint, params) {
+		var querystring = urlify(params);
+		var cached = this.getCached(endpoint + querystring);
 		if (cached) {
 			return Promise.resolve(cached);
 		}
 
-		var pending = this.getPending(endpoint);
+		var pending = this.getPending(endpoint + querystring);
 		if (pending) {
 			return pending;
 		}
 
 		var promise = Promise.resolve().then(() => {
-			return $.getJSON(this.options.rootUrl + endpoint + '?access_token=' + this.options.key);
+			return $.getJSON(this.options.rootUrl + endpoint + querystring + '&access_token=' + this.options.key);
 		});
-		this.setPending(endpoint, promise);
+		this.setPending(endpoint + querystring, promise);
 		return promise.then(data => {
-			this.setCache(data, endpoint);
-			this.setPending(endpoint);
+			this.setCache(data, endpoint + querystring);
+			this.setPending(endpoint + querystring);
 			return data;
 		});
 	},
