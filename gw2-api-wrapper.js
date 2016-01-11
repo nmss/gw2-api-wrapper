@@ -70,7 +70,7 @@ Api.prototype = {
 
 	expire: function (endpoint) {
 		if (this.cache[endpoint]) {
-			let expireDate = this.cache[endpoint][0] + this.getCacheTime(endpoint);
+			var expireDate = this.cache[endpoint][0] + this.getCacheTime(endpoint);
 			if (!this.cache[endpoint][1] || expireDate < Date.now()) {
 				delete this.cache[endpoint];
 				this.save();
@@ -79,7 +79,7 @@ Api.prototype = {
 	},
 
 	expireAll: function () {
-		for (let endpoint in this.cache) {
+		for (var endpoint in this.cache) {
 			if (endpoint === 'lastSave') {
 				continue;
 			}
@@ -88,11 +88,11 @@ Api.prototype = {
 	},
 
 	expireOthers: function() {
-		for (let key in localStorage) {
+		for (var key in localStorage) {
 			if (this.options.keyPrefix + this.options.key === key || key.indexOf(this.options.keyPrefix) !== 0) {
 				continue;
 			}
-			let data = JSON.parse(localStorage.getItem(key) || '{}');
+			var data = JSON.parse(localStorage.getItem(key) || '{}');
 			if (data.lastSave + this.getCacheTime('global') < Date.now()) {
 				localStorage.removeItem(key);
 			}
