@@ -4,7 +4,6 @@
 	"eqeqeq": true,
 	"esnext": true,
 	"globalstrict": true,
-	"jquery": true,
 	"latedef": true,
 	"undef": true,
 	"unused": true

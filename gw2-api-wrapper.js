@@ -1,5 +1,20 @@
-/* global Promise, $ */
 'use strict';
+
+var getJson;
+if (typeof fetch === 'undefined') {
+	getJson = url => new Promise((accept, reject) => window.$.getJSON(url).then(accept, reject)).catch(response => {
+		throw response.responseJSON || response.responseText || response;
+	});
+} else {
+	getJson = url => fetch(url).then(response => {
+		if (response.ok) {
+			return response.json();
+		}
+		return response.json().then(json => {
+			throw json;
+		});
+	});
+}
 
 function urlify(object) {
 	var queryParams = [];
@@ -10,15 +25,23 @@ function urlify(object) {
 }
 
 function Api(options) {
+	if (!options) {
+		options = {};
+	}
 	this.options = {
-		keyPrefix: 'gw2-api-',
-		rootUrl: 'https://api.guildwars2.com/v2/',
-		saveDelay: 1000,
+		key: options.key,
+		keyPrefix: 'gw2-api-' || options.keyPrefix,
+		rootUrl: 'https://api.guildwars2.com/v2/' || options.rootUrl,
+		saveDelay: 1000 || options.saveDelay,
 		cacheTimes: {
 			default: 60 * 60 * 1000
 		}
 	};
-	$.extend(true, this.options, options);
+	if (options.cacheTimes) {
+		for (var key in options.cacheTimes) {
+			this.options.cacheTimes[key] = options.cacheTimes[key];
+		}
+	}
 
 	this.pending = {};
 	this.cache = JSON.parse(localStorage.getItem(this.options.keyPrefix + this.options.key) || '{}');
@@ -110,9 +133,7 @@ Api.prototype = {
 			return pending;
 		}
 
-		var promise = Promise.resolve().then(() => {
-			return $.getJSON(this.options.rootUrl + endpoint + querystring + '&access_token=' + this.options.key);
-		});
+		var promise = getJson(this.options.rootUrl + endpoint + querystring + '&access_token=' + this.options.key);
 		this.setPending(endpoint + querystring, promise);
 		return promise.then(data => {
 			this.setCache(data, endpoint + querystring);
