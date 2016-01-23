@@ -66,7 +66,17 @@ Api.prototype = {
 	},
 
 	getCacheTime: function (endpoint) {
-		return this.options.cacheTimes[endpoint] || this.options.cacheTimes.default;
+		var endpointPiece;
+		var pos;
+
+		while (pos !== -1) {
+			endpointPiece = endpoint.slice(0, pos);
+			if (this.options.cacheTimes[endpointPiece]) {
+				return this.options.cacheTimes[endpointPiece];
+			}
+			pos = endpoint.lastIndexOf('/', pos - 1);
+		}
+		return this.options.cacheTimes.default;
 	},
 
 	expire: function (endpoint, querystring) {
