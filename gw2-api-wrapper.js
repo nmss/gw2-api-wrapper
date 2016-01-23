@@ -34,7 +34,8 @@ function Api(options) {
 		rootUrl: 'https://api.guildwars2.com/v2/' || options.rootUrl,
 		saveDelay: 1000 || options.saveDelay,
 		cacheTimes: {
-			default: 60 * 60 * 1000
+			default: 60 * 60 * 1000,
+			global: 7 * 24 * 60 * 60 * 1000
 		}
 	};
 	if (options.cacheTimes) {
@@ -59,7 +60,7 @@ Api.prototype = {
 		}
 		this.timeoutId = setTimeout(() => {
 			delete this.timeoutId;
-			this.cache.lastSave = Date.now();
+			this.cache.deleteAfter = Date.now() + this.options.cacheTimes.global;
 			localStorage.setItem(this.options.keyPrefix + this.options.key, JSON.stringify(this.cache));
 		}, this.options.saveDelay);
 	},
@@ -80,7 +81,7 @@ Api.prototype = {
 
 	expireAll: function () {
 		for (var endpoint in this.cache) {
-			if (endpoint === 'lastSave') {
+			if (endpoint === 'deleteAfter') {
 				continue;
 			}
 			this.expire(endpoint);
@@ -93,7 +94,7 @@ Api.prototype = {
 				continue;
 			}
 			var data = JSON.parse(localStorage.getItem(key) || '{}');
-			if (data.lastSave + this.getCacheTime('global') < Date.now()) {
+			if (data.deleteAfter < Date.now()) {
 				localStorage.removeItem(key);
 			}
 		}
