@@ -69,22 +69,23 @@ Api.prototype = {
 		return this.options.cacheTimes[endpoint] || this.options.cacheTimes.default;
 	},
 
-	expire: function (endpoint) {
-		if (this.cache[endpoint]) {
-			var expireDate = this.cache[endpoint][0] + this.getCacheTime(endpoint);
-			if (!this.cache[endpoint][1] || expireDate < Date.now()) {
-				delete this.cache[endpoint];
+	expire: function (endpoint, querystring) {
+		var request = endpoint + querystring;
+		if (this.cache[request]) {
+			var expireDate = this.cache[request][0] + this.getCacheTime(endpoint);
+			if (!this.cache[request][1] || expireDate < Date.now()) {
+				delete this.cache[request];
 				this.save();
 			}
 		}
 	},
 
 	expireAll: function () {
-		for (var endpoint in this.cache) {
-			if (endpoint === 'deleteAfter') {
+		for (var request in this.cache) {
+			if (request === '') {
 				continue;
 			}
-			this.expire(endpoint);
+			this.expire(request);
 		}
 	},
 
@@ -100,45 +101,46 @@ Api.prototype = {
 		}
 	},
 
-	getCached: function (endpoint) {
-		this.expire(endpoint);
-		return this.cache[endpoint] && this.cache[endpoint][1];
+	getCached: function (endpoint, querystring) {
+		this.expire(endpoint, querystring);
+		return this.cache[endpoint + querystring] && this.cache[endpoint + querystring][1];
 	},
 
-	setCache: function (value, endpoint) {
-		this.cache[endpoint] = [Date.now(), value];
+	setCache: function (value, request) {
+		this.cache[request] = [Date.now(), value];
 		this.save();
 	},
 
-	getPending: function (endpoint) {
-		return this.pending[endpoint];
+	getPending: function (request) {
+		return this.pending[request];
 	},
 
-	setPending: function (endpoint, promise) {
+	setPending: function (request, promise) {
 		if (promise === undefined) {
-			delete this.pending[endpoint];
+			delete this.pending[request];
 		} else {
-			this.pending[endpoint] = promise;
+			this.pending[request] = promise;
 		}
 	},
 
 	get: function (endpoint, params) {
 		var querystring = urlify(params);
-		var cached = this.getCached(endpoint + querystring);
+		var cached = this.getCached(endpoint, querystring);
 		if (cached) {
 			return Promise.resolve(cached);
 		}
 
-		var pending = this.getPending(endpoint + querystring);
+		var request = endpoint + querystring;
+		var pending = this.getPending(request);
 		if (pending) {
 			return pending;
 		}
 
-		var promise = getJson(this.options.rootUrl + endpoint + querystring + '&access_token=' + this.options.key);
-		this.setPending(endpoint + querystring, promise);
+		var promise = getJson(this.options.rootUrl + request + '&access_token=' + this.options.key);
+		this.setPending(request, promise);
 		return promise.then(data => {
-			this.setCache(data, endpoint + querystring);
-			this.setPending(endpoint + querystring);
+			this.setCache(data, request);
+			this.setPending(request);
 			return data;
 		});
 	},
