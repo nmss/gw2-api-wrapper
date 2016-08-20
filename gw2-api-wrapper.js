@@ -6,7 +6,7 @@ if (typeof fetch === 'undefined') {
 		throw response.responseJSON || response.responseText || response;
 	});
 } else {
-	getJson = url => fetch(url).then(response => {
+	getJson = url => Promise.resolve(fetch(url)).then(response => {
 		if (response.ok) {
 			return response.json();
 		}
