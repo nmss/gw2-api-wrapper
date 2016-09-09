@@ -24,6 +24,17 @@ function urlify(object) {
 	return '?' + queryParams.join('&');
 }
 
+function split(array, max) {
+	const chunkCount = Math.ceil(array.length / max);
+	const chunkSize = Math.ceil(array.length / chunkCount);
+	const result = [];
+	for (var start = 0, end; start < array.length; start = end) {
+		end = Math.round(start + chunkSize);
+		result.push(array.slice(start, end));
+	}
+	return result;
+}
+
 function Api(options) {
 	if (!options) {
 		options = {};
@@ -54,7 +65,7 @@ function Api(options) {
 }
 
 Api.prototype = {
-	save: function() {
+	save: function () {
 		if (this.timeoutId) {
 			this.timeoutId = clearTimeout(this.timeoutId);
 		}
@@ -99,7 +110,7 @@ Api.prototype = {
 		}
 	},
 
-	expireOthers: function() {
+	expireOthers: function () {
 		for (var key in localStorage) {
 			if (this.options.keyPrefix + this.options.key === key || key.indexOf(this.options.keyPrefix) !== 0) {
 				continue;
@@ -133,7 +144,7 @@ Api.prototype = {
 		}
 	},
 
-	get: function (endpoint, params) {
+	getFromApi: function (endpoint, params) {
 		var querystring = urlify(params);
 		var cached = this.getCached(endpoint, querystring);
 		if (cached) {
@@ -154,4 +165,21 @@ Api.prototype = {
 			return data;
 		});
 	},
+
+	getMultiple: function (endpoint, params) {
+		var requests = split(params.ids, 100).map(ids => {
+			var splittedParams = Object.assign({}, params, { ids });
+			return this.getFromApi(endpoint, splittedParams);
+		});
+		return Promise.all(requests)
+			.then(dataList => Array.prototype.concat.apply([], dataList));
+	},
+
+	get: function (endpoint, params) {
+		if (params && params.ids) {
+			return this.getMultiple(endpoint, params);
+		}
+		return this.getFromApi(endpoint, params);
+	}
+
 };
